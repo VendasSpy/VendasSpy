@@ -1,35 +1,22 @@
 import streamlit as st
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
 
-st.set_page_config(page_title="VENDASPY - Dashboard", layout="wide")
+st.set_page_config(page_title="VENDASPY - Consulta em Tempo Real", layout="wide")
 st.title("VENDASPY - Consulta ao Vivo no Mercado Livre")
 
-def buscar_produtos(palavra, paginas=1):
-    base_url = "https://lista.mercadolivre.com.br/"
-    headers = {"User-Agent": "Mozilla/5.0"}
+def buscar_via_api(termo, limite=50):
+    url = f"https://api.mercadolibre.com/sites/MLB/search?q={termo}&limit={limite}"
+    res = requests.get(url)
+    data = res.json()
 
     resultados = []
-    for pagina in range(paginas):
-        offset = pagina * 50
-        url = f"{base_url}{palavra.replace(' ', '-')}_Desde_{offset}"
-        res = requests.get(url, headers=headers)
-        soup = BeautifulSoup(res.text, "html.parser")
-
-        anuncios = soup.find_all("li", {"class": "ui-search-layout__item"})
-
-        for anuncio in anuncios:
-            titulo_tag = anuncio.find("h2", {"class": "ui-search-item__title"})
-            preco_tag = anuncio.find("span", {"class": "andes-money-amount__fraction"})
-            link_tag = anuncio.find("a", {"class": "ui-search-link"})
-
-            if titulo_tag and preco_tag and link_tag:
-                resultados.append({
-                    "Título": titulo_tag.get_text(strip=True),
-                    "Preço": f"R${preco_tag.get_text(strip=True)}",
-                    "Link": link_tag["href"]
-                })
+    for item in data.get("results", []):
+        resultados.append({
+            "Título": item.get("title"),
+            "Preço": f"R${item.get('price'):.2f}",
+            "Link": item.get("permalink")
+        })
 
     return pd.DataFrame(resultados)
 
@@ -37,13 +24,13 @@ palavra = st.text_input("Digite o produto que deseja pesquisar:", value="kit rel
 
 if palavra:
     st.info(f"Buscando resultados para: **{palavra}**")
-    df = buscar_produtos(palavra, paginas=2)
+    df = buscar_via_api(palavra)
 
     if not df.empty:
         st.dataframe(df)
 
         st.markdown("### Top 10 produtos com maior preço")
-        df['Preço_Num'] = df['Preço'].str.replace('R\\$', '', regex=True).str.replace('.', '', regex=False).str.replace(',', '.', regex=False).astype(float)
+        df["Preço_Num"] = df["Preço"].str.replace('R\\$', '', regex=True).str.replace(',', '.').astype(float)
         st.dataframe(df.sort_values(by="Preço_Num", ascending=False).head(10).drop(columns=["Preço_Num"]))
     else:
         st.warning("Nenhum resultado encontrado.")
