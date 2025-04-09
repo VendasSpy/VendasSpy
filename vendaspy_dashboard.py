@@ -57,3 +57,31 @@ if termo_busca:
             st.markdown("---")
     else:
         st.warning("Nenhum resultado encontrado.")
+        def buscar_produtos_publicos_com_lucro(termo):
+    url = f"https://api.mercadolibre.com/sites/MLB/search?q={termo}"
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    produtos = []
+
+    for item in data.get("results", []):
+        preco = item["price"]
+        acima_79 = preco >= 79
+        frete = 34 if acima_79 else 6.50
+        custo_estimado = preco * 0.7  # estimativa do custo real
+        lucro_liquido = preco - frete - custo_estimado
+        margem = (lucro_liquido / preco) * 100 if preco else 0
+
+        produtos.append({
+            "titulo": item["title"],
+            "preco": preco,
+            "link": item["permalink"],
+            "thumbnail": item["thumbnail"],
+            "lucro_liquido": round(lucro_liquido, 2),
+            "margem": round(margem, 1)
+        })
+
+    return produtos
