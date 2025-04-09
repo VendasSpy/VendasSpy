@@ -1,0 +1,17 @@
+from flask import Flask, request, jsonify
+import requests
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route("/buscar")
+def buscar():
+    termo = request.args.get("q")
+    limite = request.args.get("limit", "50")
+    url = f"https://api.mercadolibre.com/sites/MLB/search?q={termo}&limit={limite}"
+    response = requests.get(url)
+    return jsonify(response.json())
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
