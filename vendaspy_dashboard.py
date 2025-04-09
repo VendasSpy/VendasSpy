@@ -1,58 +1,59 @@
 import streamlit as st
-import pandas as pd
 import requests
 
-st.set_page_config(page_title="VENDASPY - Concorrência e Lucro", layout="wide")
-st.title("VENDASPY - Análise de Concorrência com Lucro Estimado")
+st.set_page_config(page_title="VENDASPY – Consulta ao Vivo no Mercado Livre")
+st.title("VENDASPY - Consulta ao Vivo no Mercado Livre")
 
-def buscar_produtos_publicos_com_lucro(termo, limite=50):
-    url = f"https://api.mercadolibre.com/sites/MLB/search?q={termo}&limit={limite}"
+def buscar_produtos_publicos_com_lucro(termo):
+    url = f"https://api.mercadolibre.com/sites/MLB/search?q={termo}&limit=10"
     response = requests.get(url)
     data = response.json()
 
     produtos = []
 
     for item in data.get("results", []):
-        preco = float(item.get("price", 0))
-        titulo = item.get("title")
-        link = item.get("permalink")
-        imagem = item.get("thumbnail")
+        titulo = item.get("title", "")
+        preco = item.get("price", 0.0)
+        link = item.get("permalink", "")
+        thumbnail = item.get("thumbnail", "")
 
-        # Cálculo de comissão e custos
-        comissao = preco * 0.17
-        desconto_fixo = 34.00 if preco >= 79 else 6.50
+        # Estimativas conforme regras definidas
+        if preco >= 79:
+            frete = 34.00
+        else:
+            frete = 6.50
 
-        valor_liquido = preco - comissao - desconto_fixo
-        margem = (valor_liquido / preco) * 100 if preco > 0 else 0
+        estimativa_custo = preco * 0.65  # Assume custo como 65% do preço
+        lucro_liquido = preco - estimativa_custo - frete
+        margem = (lucro_liquido / preco) * 100 if preco > 0 else 0
 
         produtos.append({
-            "Imagem": imagem,
-            "Título": titulo,
-            "Preço (R$)": f"{preco:.2f}",
-            "Link": link,
-            "Lucro Estimado (R$)": f"{valor_liquido:.2f}",
-            "Margem Estimada (%)": f"{margem:.1f}%"
+            "titulo": titulo,
+            "preco": preco,
+            "link": link,
+            "imagem": thumbnail,
+            "lucro_liquido": round(lucro_liquido, 2),
+            "margem": round(margem, 2)
         })
 
-    return pd.DataFrame(produtos)
+    return produtos
 
-# Entrada do usuário
-termo = st.text_input("Digite o nome do produto para analisar:", value="kit relação cg 150")
+termo_busca = st.text_input("Digite o produto que deseja pesquisar:")
 
-if termo:
-    st.info(f"Buscando produtos para: **{termo}**")
-    resultados = buscar_produtos_publicos_com_lucro(termo)
+if termo_busca:
+    st.info(f"Buscando resultados para: **{termo_busca}**")
+    produtos = buscar_produtos_publicos_com_lucro(termo_busca)
 
-    if not resultados.empty:
-        for _, row in resultados.iterrows():
-            col1, col2 = st.columns([1, 4])
+    if produtos:
+        for produto in produtos:
+            col1, col2 = st.columns([1, 3])
             with col1:
-                st.image(row["Imagem"], width=100)
+                st.image(produto["imagem"], width=100)
             with col2:
-                st.markdown(f"**{row['Título']}**")
-                st.markdown(f"Preço: R$ {row['Preço (R$)']}")
-                st.markdown(f"Lucro Estimado: R$ {row['Lucro Estimado (R$)']} | Margem: {row['Margem Estimada (%)']}")
-                st.markdown(f"[Ver Anúncio]({row['Link']})")
-                st.markdown("---")
+                st.markdown(f"**[{produto['titulo']}]({produto['link']})**")
+                st.markdown(f"Preço: R$ {produto['preco']:.2f}")
+                st.markdown(f"Lucro líquido estimado: R$ {produto['lucro_liquido']:.2f}")
+                st.markdown(f"Margem: {produto['margem']:.1f}%")
+            st.markdown("---")
     else:
-        st.warning("Nenhum produto encontrado.")
+        st.warning("Nenhum resultado encontrado.")
