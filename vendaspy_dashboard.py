@@ -7,7 +7,7 @@ st.title("VENDASPY - Consulta ao Vivo no Mercado Livre")
 def buscar_produtos(termo):
     url = f"https://api.mercadolibre.com/sites/MLB/search?q={termo}"
     headers = {"User-Agent": "Mozilla/5.0"}
-response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers)
     data = response.json()
     return data.get("results", [])
 
