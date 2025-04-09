@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-st.set_page_config(page_title="VENDASPY - Pesquisa Ao Vivo", layout="wide")
+st.set_page_config(page_title="VENDASPY - Dashboard", layout="wide")
 st.title("VENDASPY - Consulta ao Vivo no Mercado Livre")
 
 def buscar_produtos(palavra, paginas=1):
@@ -17,21 +17,22 @@ def buscar_produtos(palavra, paginas=1):
         res = requests.get(url, headers=headers)
         soup = BeautifulSoup(res.text, "html.parser")
 
-        anuncios = soup.select(".ui-search-layout__item")
-        for anuncio in anuncios:
-            titulo = anuncio.select_one(".ui-search-item__title")
-            preco = anuncio.select_one(".andes-money-amount__fraction")
-            link = anuncio.select_one("a.ui-search-link")
+        anuncios = soup.find_all("li", {"class": "ui-search-layout__item"})
 
-            if titulo and preco and link:
+        for anuncio in anuncios:
+            titulo_tag = anuncio.find("h2", {"class": "ui-search-item__title"})
+            preco_tag = anuncio.find("span", {"class": "andes-money-amount__fraction"})
+            link_tag = anuncio.find("a", {"class": "ui-search-link"})
+
+            if titulo_tag and preco_tag and link_tag:
                 resultados.append({
-                    "Título": titulo.get_text(strip=True),
-                    "Preço": f"R${preco.get_text(strip=True)}",
-                    "Link": link["href"]
+                    "Título": titulo_tag.get_text(strip=True),
+                    "Preço": f"R${preco_tag.get_text(strip=True)}",
+                    "Link": link_tag["href"]
                 })
+
     return pd.DataFrame(resultados)
 
-# Campo de busca
 palavra = st.text_input("Digite o produto que deseja pesquisar:", value="kit relação cg 150")
 
 if palavra:
